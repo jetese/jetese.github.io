@@ -1,0 +1,864 @@
+<!DOCTYPE html>
+<html>
+<head>
+<title>Práctica 3</title>
+<meta http-equiv="Content-Type" content="text/html; charset=UTF-8" />
+    <style>
+    	body{
+				background-color:#000000;
+			}
+      	canvas {
+        	margin: 0px;
+        	padding: 0px;
+			border:1px solid #000000;
+			margin: 0 auto;
+			display: block;
+		}
+		p{
+			color:rgb(255,255,255);
+			font-size: 125%;
+		}
+		h1 {
+			color:rgb(255,255,255);
+            text-align: center;
+            font-size: 150%;
+        }
+
+		h2{
+			color:rgb(255,255,255);
+        	font-size: 125%;
+        }
+            
+
+    	br{
+           	text-align: left;
+            float:left;
+       	}
+		
+		div {
+			font-family: times, serif;
+            font-size:14pt;
+            font-style:italic;
+            color:rgb(118,60,40);
+                
+       	}
+            
+       	table{
+            width:100%;
+        }
+
+    </style>
+  </head>
+  <body>
+  <body>
+    
+    <h1>Practica 3, Arkanoid. Realizado por Jesús Téllez Serrano</h1><br>
+
+	    <audio id="sonido">
+		<source src="bong.wav"></source>
+		</audio>
+		<audio id="sonido2">
+		<source src="pierde.wav"></source>
+		</audio>
+	    <table>
+	    <audio id="sonido3">
+		<source src="bing.wav"></source>
+		</audio>
+
+  		<tr>
+	    	<th float:left>
+	    		<br></br><p id="parrafo">Número de vidas: </p></div><br><br>
+	    		<p id="parrafo2">Nivel 1</p><br><br><br><br><br><br><br>
+	    		-------------------------------------------
+	    		
+			</th>
+
+	    	<th text-align: center;>
+	    		<canvas id="lienzo" width="624" height="796" ></canvas>
+	    	</th> 
+
+	    	<th float:right>
+	    		<h2>Instrucciones:<br><br>
+	    			Para lanzar la bola:<br>
+	    			pulse espacio<br><br>
+	    			Para mover la raqueta:<br>
+	    			Pulse click izquierdo<br>
+	    			en la raqueta y mantengalo<br>
+	    			pulsado mientras la mueve
+
+	    		</h2>
+
+			</th>
+  		</tr>
+	</table>
+	
+	<p>Audios de https://www.sounds-resource.com/nes/arkanoid/sound/3698/</p>
+
+	  
+	</div>
+	
+    <script type="text/javascript">
+      
+      	//Variables del canvas
+		var contextoGrafico = document.getElementById('lienzo').getContext('2d');
+		var lienzo = document.getElementById('lienzo');
+		var maxX = lienzo.width;
+		var maxY = lienzo.height;
+
+		//Párrafos
+		var parrafo = document.getElementById('parrafo');
+		var parrafo2 = document.getElementById('parrafo2');
+
+		//Inicialización de los niveles, para no tener que hacer a mano los arrays de 
+		//Posición del ladrillo, número de golpes que debe recibir antes de romperse y color.
+		uno = new niveluno();
+		dos = new niveldos();
+
+
+		//Variables necesarias para el juego
+		var Ladrillos = new arrayladrillos(65,uno.x,uno.y,uno.color,45,25,uno.vida); //Array de ladrillos
+		var Jugador = new jugador(maxX/2-50,maxY-50,99,30); //Jugador (Raqueta) y más propiedades
+		var pelota = new bola(Jugador.getposx()+60, Jugador.getposy()-16, 0, 0, 18, 15); //Pelota
+		var nivel =0;//Nivel en el que nos encontramos
+		var espacio =0;//Está disponible la tecla espacio para ser pulsada
+
+
+		parrafo.innerHTML = "Número de vidas: " +Jugador.getvidas();
+
+		
+
+		//variable para guardar todos los sprites
+		var listaSprites = Array(6);
+	
+		//Cargar los sprites
+		cargaImagen(contextoGrafico, "hexagon_pattern.png",208,232,0 );
+		cargaImagen(contextoGrafico, "border_right.png",6,230,1 );
+		cargaImagen(contextoGrafico, "border_left.png",6,230,2);
+		cargaImagen(contextoGrafico, "border_top.png",220,7,3 );
+		cargaImagen(contextoGrafico, "ball.png", 6,5,4);
+	
+		cargaImagen(contextoGrafico, "racket.png",33,10,5 );
+
+		//Sonidos
+		var audio = document.getElementById("sonido");
+		var audio2 = document.getElementById("sonido2");
+		var audio3 = document.getElementById("sonido3");
+		//Audios de https://www.sounds-resource.com/nes/arkanoid/sound/3698/
+
+		
+		
+			
+
+		//"Recolectores" de eventos de ratón en el canvas
+		lienzo.addEventListener("mousedown", manejaraton, false);
+		lienzo.addEventListener("mouseup", manejaraton, false);
+		lienzo.addEventListener("mousemove", manejaraton, true);
+
+		//"Recolectores" de eventos de teclado
+		window.addEventListener("keypress", manejateclado, false);		
+		
+		window.onload=function(){
+		//Temporizador que se active 30 veces por segundo
+		var temporizador = setInterval(actualizaPosicion, 1000/30);
+		//Temporizador a la velocidad del monitor
+		requestAnimationFrame(actualizaDibujo);
+	}
+
+
+
+		//********************FUNCIONES DE PINTADO Y SPRITES********************
+
+		//Función que se encarga de redibujar la escena
+		function actualizaDibujo()
+		{
+			dibujaCuadro(contextoGrafico);
+			requestAnimationFrame(actualizaDibujo);
+		}
+
+		//Dibuja la escena acorde al refresco de la pantalla
+		function dibujaCuadro(contexto)
+		{
+			
+			listaSprites[0].dibuja(contextoGrafico,0,110,3);
+			listaSprites[1].dibuja(contextoGrafico,606,106,3);
+			listaSprites[2].dibuja(contextoGrafico,0,106,3);
+			listaSprites[3].dibuja(contextoGrafico,0,100,2.835);
+			listaSprites[4].dibuja(contextoGrafico,pelota.getposx(),pelota.getposy(),3);
+			listaSprites[5].dibuja(contextoGrafico,Jugador.getposx(),Jugador.getposy(),3);
+
+			pintaLadrillos(contextoGrafico,Ladrillos);
+		}
+
+
+		//Pinta los ladrillos que se pasan como parámetros (array de ladrillos)
+		function pintaLadrillos(contexto, ladrillos)
+		{			
+			var color = contexto.fillStyle;
+			for (var i=0;i<ladrillos.size();i++){
+				contexto.fillStyle = ladrillos.getcolorladrillo(i);
+				//parrafo.innerHTML += " "+ladrillos.getcolorladrillo(i);
+				if(ladrillos.getvidaladrillo(i)!=0){
+					contexto.fillRect(ladrillos.getposxladrillo(i),ladrillos.getposyladrillo(i), ladrillos.getancholadrillo(), ladrillos.getaltoladrillo());
+					contexto.strokeRect(ladrillos.getposxladrillo(i),ladrillos.getposyladrillo(i), ladrillos.getancholadrillo(), ladrillos.getaltoladrillo());
+				}
+			}
+
+			contexto.fillStyle = color;
+		}
+		
+
+		function constructorSprite (imagenFuente, x, y, ancho, alto)
+		{			
+			var imagen = imagenFuente;
+			this.x = x;
+			this.y = y;
+			this.ancho = ancho;
+			this.alto = alto;
+			
+			//dibuja el sprite en el contexto dado, en la posición x,y y con el tamaño acorde a la escala. escala = 1 es 100% del tamaño original
+			this.dibuja = function(contexto, x, y, escala)
+			{
+				contextoGrafico.drawImage(imagen, this.x, this.y, this.ancho, this.alto, x, y, this.ancho*escala, this.alto*escala);
+			
+			}			
+		};		
+		
+		//Carga 		
+		function cargaImagen(contexto, nombreImagen, anchoSprite, altoSprite, spriteID)
+		 {
+			var imagen = new Image();
+			
+			imagen.src = nombreImagen;
+				
+			imagen.onload = function()
+			{
+				
+				
+						var x = 0;
+						var y = 0;
+						listaSprites[spriteID] = new constructorSprite(imagen, x, y, anchoSprite, altoSprite);
+						spriteID++;
+					
+				
+			}
+		}
+			
+		//********************FUNCIONES PARA GESTIONAR EVENTOS********************
+
+		//Manejador del teclado, usaremos la tecla espacio para lanzar la bola.
+		function manejateclado (e)
+		{
+			if (e.type === "keypress")
+			{
+				if(e.keyCode==32 && espacio ==0) {
+					pelota.setvelX(3);
+					pelota.setvelY(-3);
+					espacio=1;
+				}
+			}
+
+		}
+
+		//Manejador del ratón, se encarga de mover la raqueta dentro de los límites
+		function manejaraton(e)
+		{
+		
+			//calculamos la x,y dentro del lienzo					
+			var dimensionesinternas = this.getBoundingClientRect();			
+			/*las posiciones relativas dentro del cuadro se sacan restando las posiciones absolutas en la página y el tamaño del cuadro*/
+			var posCuadroX = e.pageX - dimensionesinternas.left;	
+			var posCuadroY = e.pageY - dimensionesinternas.top;						
+			switch (e.type)
+			{		
+				case "mousedown":
+								//comprobamos si se ha pinchado sobre la raqueta
+								if (posCuadroX >= Jugador.getposx() && posCuadroX <= Jugador.getposx() + Jugador.getancho() &&
+									posCuadroY >= Jugador.getposy() && posCuadroY <= Jugador.getposy() + Jugador.getalto())
+								{
+									Jugador.conRaton = true;
+								}
+								break;				
+				case "mouseup":
+								//al soltar el botón dejamos de mover la raqueta
+								Jugador.conRaton = false;
+								break;
+				case "mousemove":
+								  //Actualizamos la posición de la raqueta si está dentro de los límites
+								  
+								  
+								  if(Jugador.conRaton == true && posCuadroX <= 0+Jugador.getancho()/2+18){
+								  		Jugador.setposx(0+18);
+								  }
+								  else if(Jugador.conRaton == true && posCuadroX  >= maxX-Jugador.getancho()/2-18){
+								  		Jugador.setposx (maxX-Jugador.getancho()-18);
+								  }
+								  else if (Jugador.conRaton == true){
+								  		Jugador.setposx(posCuadroX-Jugador.getancho()/2);
+								  }
+								  
+								  break;
+			}
+			//Si hemos perdido o aún no hemos empezado, colocamos la bola pegada a la raqueta
+			if (espacio == 0){
+				pelota.setposx(Jugador.getposx()+60);
+				pelota.setposy(Jugador.getposy()-16);
+			}
+		}
+		
+		
+		
+		
+
+		
+		//********************FUNCIONES PARA LAS COLISIONES Y ACTUALIZAR LAS POSICIONES********************		
+		
+		
+		//Esta funcion comprueba si la raqueta colisiona con la bola y en que lado de la raqueta colisiona
+		function seSolapan(pel, B)
+		{
+			//segmento superior de B
+			var A={x: pel.getposx(),y:pel.getposy(),ancho:pel.getancho(),alto:pel.getalto()};		
+			var rectanguloIzquierdo = {x: B.getposx(), y: B.getposy(), ancho: B.getancho()/3-9, alto: B.getalto()};
+			var rectanguloCentral  = {x: B.getposx() + B.getancho()/3-9, y: B.getposy(), ancho: B.getancho()/3, alto: B.getalto()};
+			var rectanguloDerecho = {x: B.getposx() + (B.getancho()/3)*2-9, y: B.getposy(), ancho: B.getancho()/3+9, alto: B.getalto()};
+			
+			//Si da en el lado izquierdo de la raqueta
+			if ((A.y+A.alto < rectanguloIzquierdo.y || rectanguloIzquierdo.y+rectanguloIzquierdo.alto < A.y || A.x+A.ancho < rectanguloIzquierdo.x || rectanguloIzquierdo.x+rectanguloIzquierdo.ancho < A.x) == false)			
+			{
+				audio3.play();
+				return 0;
+			}
+			else//Si da en el centro de laraqueta
+			if ((A.y+A.alto < rectanguloCentral.y || rectanguloCentral.y+rectanguloCentral.alto < A.y || A.x+A.ancho < rectanguloCentral.x || rectanguloCentral.x+rectanguloCentral.ancho < A.x) == false)
+			{
+				audio3.play();
+				return 1;
+			}
+			else//Si da en el lado derecho de la raqueta
+			if ((A.y+A.alto < rectanguloDerecho.y || rectanguloDerecho.y+rectanguloDerecho.alto < A.y || A.x+A.ancho < rectanguloDerecho.x || rectanguloDerecho.x+rectanguloDerecho.ancho < A.x) == false)
+			{
+				audio3.play();
+				return 2;
+			}
+			else//Si no da en la raqueta
+			{
+				return -1;
+			}
+
+				
+		}
+
+		//Se encarga de la colisión de la bola con los ladrillos
+		function colisionladrillos(ball,ladrillos){
+			var izq,der,arr,aba =false;
+			var ladrilloschocan =[];
+			cont =0;
+			var pelota = {x:ball.getposx(), y:ball.getposy(), ancho: ball.getancho(), alto: ball.getalto()};
+			
+			//Para todos los ladrillos calculamos la colisión de la bola, si diese en la unión de dos ladrillos
+			//lo tendremos en cuenta y los añadiremos a ladrilloschocan
+			for(var i=0;i<ladrillos.size();i++){
+				
+				var rectangulo = {x: ladrillos.getposxladrillo(i), y: ladrillos.getposyladrillo(i), ancho: ladrillos.getancholadrillo()+ladrillos.getposxladrillo(i) , alto: ladrillos.getaltoladrillo() +ladrillos.getposyladrillo(i)};
+				
+
+				//Si la pelota choca con un ladrillo, calculamos en que parte del ladrillo dió.
+				if ((pelota.y+pelota.alto <= rectangulo.y || rectangulo.alto <= pelota.y || pelota.x+pelota.ancho <= rectangulo.x || rectangulo.ancho <= pelota.x) == false && ladrillos.getvidaladrillo(i)!=0)			
+				{
+					//Si da en la izquierda del ladrillo
+					if(ladrillos.getvidaladrillo(i)!=0 && pelota.x < rectangulo.x && rectangulo.x < pelota.x+pelota.ancho &&pelota.x+pelota.ancho < rectangulo.ancho ){ 
+						//Izquierda  
+						izq=true;
+						ladrilloschocan[cont]=i;
+						cont++;
+					}
+					//Si da en la derecha del ladrillo
+					if(ladrillos.getvidaladrillo(i)!=0 && rectangulo.x < pelota.x && pelota.x < rectangulo.ancho && rectangulo.ancho < pelota.x+pelota.ancho){
+						//Derecha
+						der=true;
+						ladrilloschocan[cont]=i;
+						cont++;
+					}
+					//Si da arriba del ladrillo
+					if(ladrillos.getvidaladrillo(i)!=0 && pelota.y < rectangulo.y && rectangulo.y < pelota.y+pelota.alto && pelota.y+pelota.alto < rectangulo.alto){
+						//arriba
+						arr=true;
+						ladrilloschocan[cont]=i;
+						cont++;
+					}
+					//Si da abajo del ladrillo
+					if(ladrillos.getvidaladrillo(i)!=0 && rectangulo.y < pelota.y && pelota.y < rectangulo.alto && rectangulo.alto < pelota.y +pelota.alto){
+						//abajo
+						aba=true;
+						ladrilloschocan[cont]=i;
+						cont++;
+
+					}
+
+				}
+			}
+			//Eliminamos los repetidos, ya que si da en la esquina de un ladrillo, añadira este ladrillo dos veces al
+			//array de ladrilloschocan
+			elemrep(ladrilloschocan);
+
+			//Le quitamos un punto de vida a los ladrillos con los que chocó
+			for(var i=0;i<ladrilloschocan.length;i++){
+
+				ladrillos.setvidaladrillo(ladrilloschocan[i],ladrillos.getvidaladrillo(ladrilloschocan[i])-1);
+				
+			}
+
+			//Actualizamos la velocidad de la bola según los lados en los que ha pegado la bola
+			if(izq)	ball.setvelX(-Math.abs(ball.getvelX())-1);
+			if(der) ball.setvelX(Math.abs(ball.getvelX())+1);
+			if(arr) ball.setvelY(-Math.abs(ball.getvelY())-1);
+			if(aba) ball.setvelY (Math.abs(ball.getvelY())+1);
+
+			//Sonidos cuando da en el ladrillo
+			if(izq||der||arr||aba){
+				audio.play();
+			}
+
+			
+		}
+
+		
+		
+		// Esta función actualiza la posición del cuadro, se hace más rápido que la visualización
+		function actualizaPosicion()
+		{
+		
+			//Si la pelota toca el final del canvas, perdemos una vida				
+			if  ((pelota.getposy() + pelota.getalto()) >= maxY)
+			{	
+				Jugador.setvidas(Jugador.getvidas()-1);
+					
+				espacio=0;
+				audio2.play();
+				//Si perdemos todas las vidas, "has perdido" y reiniciamos el juego en el nivel 1
+				if(Jugador.getvidas()==0)	{
+					parrafo2.innerHTML = "HAS PERDIDO";
+					Ladrillos = new arrayladrillos(65,uno.x,uno.y,uno.color,45,25,uno.vida);
+					Jugador = new jugador(maxX/2-50,maxY-50,99,30); //derecha
+					parrafo.innerHTML = "Número de vidas: " +Jugador.getvidas();	
+				}//Si no, le quitamos una vida al jugador.
+				else{
+					parrafo.innerHTML = "Número de vidas: " +Jugador.getvidas();
+				}
+				pelota = new bola(Jugador.getposx()+60, Jugador.getposy()-16, 0, 0, 18, 15);
+			}
+			//Si la pelota toca la barra de arriba, actualizamos la velocidad de la bola en Y
+			else if (pelota.getposy() <= 124)
+			{
+				pelota.setvelY(-pelota.getvelY());			
+			}			
+								
+
+			//Comprobamos si la pelota toca la raqueta y actualizamos la velocidad según donde tocó.
+			if (seSolapan(pelota, Jugador) == 0 ) //toca por izquierda
+				{
+					//velocidad de Y negativa
+					pelota.setvelX(-Math.abs(pelota.getvelY())-0.1);
+					pelota.setvelY(-pelota.getvelY());
+				}
+			else
+			if (seSolapan(pelota, Jugador)  == 1) //toca por en medio
+			{
+					pelota.setvelX(0);
+					pelota.setvelY(-pelota.getvelY());
+			}
+			else
+			if (seSolapan(pelota, Jugador) == 2)  //toca por derecha		
+			{
+					//velocidad de Y positiva
+					pelota.setvelX(Math.abs(pelota.getvelY())+0.1);
+					pelota.setvelY(-pelota.getvelY());
+			}
+
+
+			else//comprobamos si toca las barras laterales y actualizamos la velocidad 
+			if  ((pelota.getposx() + pelota.getancho()) >= maxX-21 )
+			{
+				pelota.setvelX (-Math.abs(pelota.getvelX()));
+			}
+			else
+			if((pelota.getposx() < 21)&&cont==0){
+				pelota.setvelX (Math.abs(pelota.getvelX()));
+			}
+			else//Comprobamos la colisión de la bola con los ladrillos
+				colisionladrillos(pelota,Ladrillos);
+
+
+			//limitamos la velocidad en Y
+			if (pelota.getvelY()*30 > 300)
+				pelota.setvelY (300/30);
+			
+			if (pelota.getvelY()*30 < -300)
+				pelota.setvelY (-300/30);
+			if (pelota.getvelX()*30 > 300)
+				pelota.setvelX (300/30);
+			
+			if (pelota.getvelX()*30 < -300)
+				pelota.setvelX (-300/30);	
+			
+			//Actualizamos la posicion de el objeto pelota
+			pelota.setposx (pelota.getvelX()+pelota.getposx());
+			pelota.setposy(pelota.getvelY()+pelota.getposy());
+			
+			//Si se acaban los ladrillos hemos ganado o pasamos al siguiente nivel.
+			if(Ladrillos.hasganado()){
+				switch(nivel){
+					case 0://Si ganamos el nivel 1, implementamos en ladrillos el nivel 2, y reseteamos la 
+							//posición de la bola
+						nivel++;
+						Ladrillos = new arrayladrillos(91,dos.x,dos.y,dos.color,45,25,dos.vida);
+						
+						pelota = new bola(Jugador.getposx()+60, Jugador.getposy()-16, 0, 0, 18, 15);
+						espacio =0;
+						parrafo2.innerHTML= "Nivel 2";
+						break;
+					case 1://Si ganamos el nivel 2 "Ganamos"
+
+						parrafo2.innerHTML= "HAS GANADO";
+						Jugador = new jugador(maxX/2-50,maxY-50,99,30);
+						parrafo.innerHTML = "Número de vidas: " +Jugador.getvidas();	
+						Ladrillos = new arrayladrillos(65,uno.x,uno.y,uno.color,45,25,uno.vida);
+						pelota = new bola(Jugador.getposx()+60, Jugador.getposy()-16, 0, 0, 18, 15);
+						nivel =0;
+						espacio =0;
+						break;
+				}
+			}
+			
+		}
+		
+		
+		//********************CONSTRUCTORES DE LOS OBJETOS NECESARIOS********************
+
+		//Constructor de 1 ladrillo
+		function ladrillo(colores="0,0,0",x="0",y="0",lifes="1"){
+			var posx = x;
+			var posy = y;
+			var vida = lifes;
+			var color = colores;
+
+			this.getx = function(){
+				return x;
+			}
+			this.setx = function(valor){
+				posx = valor;
+			}
+			this.gety = function(){
+				return y;
+			}
+			this.sety = function(valor){
+				posy = valor;
+			}
+			this.getvida = function(){
+				return vida;
+			}
+			this.setvida = function(valor){
+				vida = valor;
+			}
+			this.getcolor = function(){
+				return color;
+			}
+			this.setcolor = function(valor){
+				color = valor;
+			}
+		}
+
+		//Constructor de un array de ladrillos (los ladrillos del nivel)
+		function arrayladrillos(numladrillos, posx, posy, color, anc, alt, vid){
+			var ladrillos = [];
+			var ancho = anc;
+			var alto = alt;
+			var max=numladrillos;
+
+			for (var i =0; i<numladrillos;i++){
+				ladrillos[i]= new ladrillo(color[i],posx[i],posy[i],vid[i]);
+			}
+
+			this.getposxladrillo=function(pos){
+				return ladrillos[pos].getx();
+			}
+			this.getposyladrillo=function(pos){
+				return ladrillos[pos].gety();
+			}
+			this.getcolorladrillo=function(pos){
+				return ladrillos[pos].getcolor();
+			}
+			this.getvidaladrillo=function(pos){
+				return ladrillos[pos].getvida();
+			}
+			this.getancholadrillo=function(){
+				return ancho;
+			}
+			this.getaltoladrillo=function(){
+				return alto;
+			}
+			this.size=function(){
+				return max;
+			}
+			this.setvidaladrillo=function(pos,valor){
+				ladrillos[pos].setvida(valor);
+			}
+			this.setcolorladrillo=function(pos,valor){
+				ladrillos[pos].setcolor(valor);
+			}
+			this.setposxladrillo=function(pos,valor){
+				ladrillos[pos].setposx(valor);
+			}
+			this.setposyladrillo=function(pos,valor){
+				ladrillos[pos].setposy(valor);
+			}
+			this.hasganado=function(){
+
+				for (var i=0; i<this.size();i++){
+				if (this.getvidaladrillo(i)!=0)	return false;
+			}
+			return true;
+		}
+
+		}
+		
+		//Constructor del jugador (Raqueta, vidas)
+		function jugador (posx,posy,anc,alt){
+			var x=posx;
+			var y=posy;
+			var ancho = anc;
+			var alto = alt;
+			var vida =3;
+			this.conRaton=false;
+			this.getposx=function(){
+				return x;
+			}
+			this.getposy=function(){
+				return y;
+			}
+			this.getvidas=function(){
+				return vida;
+			}
+			this.getancho=function(){
+				return ancho;
+			}
+			this.getalto=function(){
+				return alto;
+			}
+			this.setposx=function(pos){
+				x=pos;
+			}
+			this.setposy=function(pos){
+				y=pos;
+			}
+			this.setvidas=function(vid){
+				vida=vid;
+			}
+			this.setancho=function(anc){
+				ancho=anc;
+			}
+			this.setalto=function(alt){
+				alto=alt;
+			}
+
+		}
+
+		//Constructor de la bola
+		function bola (posx,posy,velx,vely,anc,alt){
+			var x=posx;
+			var y=posy;
+			var ancho = anc;
+			var alto = alt;
+			var velocidadX =velx;
+			var velocidadY = vely;
+
+			this.getposx=function(){
+				return x;
+			}
+			this.getposy=function(){
+				return y;
+			}
+			this.getvelX=function(){
+				return velocidadX;
+			}
+			this.getvelY=function(){
+				return velocidadY;
+			}
+			this.getancho=function(){
+				return ancho;
+			}
+			this.getalto=function(){
+				return alto;
+			}
+			this.setposx=function(pos){
+				x=pos;
+			}
+			this.setposy=function(pos){
+				y=pos;
+			}
+			this.setvelX=function(velx){
+				velocidadX=velx;
+			}
+			this.setvelY=function(vely){
+				velocidadY=vely;
+			}
+			this.setancho=function(anc){
+				ancho=anc;
+			}
+			this.setalto=function(alt){
+				alto=alt;
+			}
+		}
+
+		//Creamos el nivel uno con un constructor para no tener que rellenar los arrays a mano
+		function niveluno (){
+			this.x=[];
+			this.y =[];
+			this.vida=[];
+			this.color=[];
+			var cont=0;
+			var cont2=0;
+			
+			for(var i=0;i<65;i++){
+				if(cont %13 ==0){
+					cont=0;
+					cont2++;
+				}
+				this.x[i]=45*cont+20;
+				this.y[i]=200+25*cont2;
+
+				switch(cont2){
+					case 1:
+						this.color[i]="darkgrey";
+						this.vida[i]=2;
+						break;
+					case 2:
+						this.color[i]="red";
+						this.vida[i]=1;
+						break;
+					case 3:
+						this.color[i]="yellow";
+						this.vida[i]=1;
+						break;
+					case 4:
+						this.color[i]="blue";
+						this.vida[i]=1;
+						break;
+					case 5:
+						this.color[i]="green";
+						this.vida[i]=1;
+						break;
+				}
+				cont++;
+
+			}
+		}
+
+		//Creamos el nivel dos con un constructor para no tener que rellenar los arrays a mano
+		function niveldos(){
+			this.x=[];
+			this.y =[];
+			this.vida=[];
+			this.color=[];
+			this.tam = 0;
+			var cont=1;
+			var cont2=0;
+			var cont3 =0;
+			
+			for(var i=0; i<13;i++){
+				for(var j=cont2;j<13;j++){
+					this.x[this.tam]=45*i+20;
+					this.y[this.tam]=200+25*j;
+					
+					
+					switch(i){
+					case 0:
+						this.color[this.tam]="DarkOrange";
+						this.vida[this.tam]=1;
+						break;
+					case 1:
+						this.color[this.tam]="Turquoise";
+						this.vida[this.tam]=1;
+						break;
+					case 2:
+						this.color[this.tam]="Lime";
+						this.vida[this.tam]=1;
+						break;
+					case 3:
+						this.color[this.tam]="Red";
+						this.vida[this.tam]=1;
+						break;
+					case 4:
+						this.color[this.tam]="MediumBlue";
+						this.vida[this.tam]=1;
+						break;
+					case 5:
+						this.color[this.tam]="MediumOrchid";
+						this.vida[this.tam]=1;
+						break;
+					case 6:
+						this.color[this.tam]="yellow";
+						this.vida[this.tam]=1;
+						break;
+					case 7:
+						this.color[this.tam]="HoneyDew";
+						this.vida[this.tam]=1;
+						break;
+					case 8:
+						this.color[this.tam]="DarkGoldenRod";
+						this.vida[this.tam]=1;
+						break;
+					case 9:
+						this.color[this.tam]="DodgerBlue";
+						this.vida[this.tam]=1;
+						break;
+					case 10:
+						this.color[this.tam]="DarkMagenta";
+						this.vida[this.tam]=1;
+						break;
+					case 11:
+						this.color[this.tam]="PaleVioletRed";
+						this.vida[this.tam]=1;
+						break;
+					case 12:
+						this.color[this.tam]="YellowGreen";
+						this.vida[this.tam]=1;
+						break;
+					}
+					if(j==12 && i!=12){
+						this.color[this.tam]="DarkGrey";
+						this.vida[this.tam]=2;
+					}
+					else if(j==12 && i==12){
+						this.color[this.tam]="Red";
+						this.vida[this.tam]=1;
+					}
+
+					
+					
+					
+					this.tam++;
+				}
+				
+				cont2++;
+			}
+		}
+
+		//Función que elimina los elementos repetidos de un array
+		function elemrep(array){
+			for (var i=0;i<array.length;i++){
+				for(var j=i+1;j<array.length;j++){
+					if(array[i]==array[j]){
+						for(var k=j; k< array.length-1;k++){
+							array[k]=array[k+1];
+						}
+						array.pop();
+					}
+				}
+			}
+		}
+		
+		
+		</script>
+  </body>
+</html>  
